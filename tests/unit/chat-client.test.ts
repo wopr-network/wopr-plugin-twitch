@@ -3,25 +3,23 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Mock Twurple ChatClient before importing chat-client
 vi.mock("@twurple/chat", () => {
   return {
-    ChatClient: vi.fn().mockImplementation(() => {
+    ChatClient: vi.fn().mockImplementation(function (this: Record<string, unknown>) {
       let connectCallback: (() => void) | null = null;
-      return {
-        onMessage: vi.fn(),
-        onWhisper: vi.fn(),
-        onSub: vi.fn(),
-        onResub: vi.fn(),
-        onRaid: vi.fn(),
-        onConnect: vi.fn().mockImplementation((cb: () => void) => {
-          connectCallback = cb;
-        }),
-        onDisconnect: vi.fn(),
-        connect: vi.fn().mockImplementation(() => {
-          // Simulate immediate connection
-          if (connectCallback) setTimeout(connectCallback, 0);
-        }),
-        quit: vi.fn(),
-        say: vi.fn().mockResolvedValue(undefined),
-      };
+      this.onMessage = vi.fn();
+      this.onWhisper = vi.fn();
+      this.onSub = vi.fn();
+      this.onResub = vi.fn();
+      this.onRaid = vi.fn();
+      this.onConnect = vi.fn().mockImplementation((cb: () => void) => {
+        connectCallback = cb;
+      });
+      this.onDisconnect = vi.fn();
+      this.connect = vi.fn().mockImplementation(() => {
+        // Simulate immediate connection
+        if (connectCallback) setTimeout(connectCallback, 0);
+      });
+      this.quit = vi.fn();
+      this.say = vi.fn().mockResolvedValue(undefined);
     }),
   };
 });
