@@ -4,7 +4,7 @@ import type {
   ChannelMessageContext,
   ChannelMessageParser,
   ChannelProvider,
-} from "./types.js";
+} from "@wopr-network/plugin-types";
 
 // Minimal interface for what channel-provider needs from TwitchChatManager
 interface ChatManagerLike {

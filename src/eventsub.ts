@@ -1,7 +1,7 @@
 import { ApiClient } from "@twurple/api";
 import type { AuthProvider } from "@twurple/auth";
 import { EventSubWsListener } from "@twurple/eventsub-ws";
-import type { ChannelRef, WOPRPluginContext } from "./types.js";
+import type { ChannelRef, WOPRPluginContext } from "@wopr-network/plugin-types";
 
 export class TwitchEventSubManager {
   private listener: EventSubWsListener | null = null;

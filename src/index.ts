@@ -101,6 +101,9 @@ const plugin: WOPRPlugin = {
     version: "1.0.0",
     description: "Twitch chat integration with whispers and channel point redemptions",
     capabilities: ["channel"],
+    provides: {
+      capabilities: [{ type: "channel", id: "twitch", displayName: "Twitch", tier: "byok" }],
+    },
     requires: {
       env: [],
       network: { outbound: true, hosts: ["irc-ws.chat.twitch.tv", "api.twitch.tv"] },
