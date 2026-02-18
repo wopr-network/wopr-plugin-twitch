@@ -2,9 +2,9 @@ import type { ApiClient } from "@twurple/api";
 import type { AuthProvider } from "@twurple/auth";
 import type { ChatMessage, Whisper } from "@twurple/chat";
 import { ChatClient } from "@twurple/chat";
+import type { ChannelRef, WOPRPluginContext } from "@wopr-network/plugin-types";
 import { RateLimiter } from "./rate-limiter.js";
 import { extractUserInfo, getRolePrefix } from "./role-mapper.js";
-import type { ChannelRef, WOPRPluginContext } from "@wopr-network/plugin-types";
 import type { TwitchConfig } from "./types.js";
 
 // Max message length for Twitch chat
