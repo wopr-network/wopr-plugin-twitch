@@ -1,4 +1,5 @@
-import { RefreshingAuthProvider } from "@twurple/auth";
+import { ApiClient } from "@twurple/api";
+import { getTokenInfo, RefreshingAuthProvider } from "@twurple/auth";
 import type { ConfigSchema, WOPRPlugin, WOPRPluginContext } from "@wopr-network/plugin-types";
 import { setChatManager, twitchChannelProvider } from "./channel-provider.js";
 import { TwitchChatManager } from "./chat-client.js";
@@ -176,11 +177,27 @@ const plugin: WOPRPlugin = {
     ctx.registerChannelProvider(twitchChannelProvider);
     ctx.log.info("Registered Twitch channel provider");
 
-    chatManager = new TwitchChatManager(ctx, { ...config, channels });
+    const apiClient = new ApiClient({ authProvider });
+
+    let botUserId: string | undefined;
+    let botUsername: string | undefined;
+    try {
+      const tokenInfo = await getTokenInfo(config.accessToken, config.clientId);
+      botUserId = tokenInfo.userId ?? undefined;
+      botUsername = tokenInfo.userName ?? undefined;
+    } catch (err) {
+      ctx.log.warn(`Could not resolve bot user info: ${err}`);
+    }
+
+    chatManager = new TwitchChatManager(ctx, { ...config, channels }, apiClient, botUserId);
     setChatManager(chatManager);
 
     try {
       await chatManager.connect(authProvider);
+      if (botUsername) {
+        chatManager.setBotUsername(botUsername);
+        ctx.log.info(`Bot username set: ${botUsername}`);
+      }
     } catch (err) {
       ctx.log.error(`Failed to connect to Twitch chat: ${err}`);
       return;
