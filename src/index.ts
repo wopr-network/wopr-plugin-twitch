@@ -1,8 +1,9 @@
 import { RefreshingAuthProvider } from "@twurple/auth";
+import type { ConfigSchema, WOPRPlugin, WOPRPluginContext } from "@wopr-network/plugin-types";
 import { setChatManager, twitchChannelProvider } from "./channel-provider.js";
 import { TwitchChatManager } from "./chat-client.js";
 import { TwitchEventSubManager } from "./eventsub.js";
-import type { ConfigSchema, TwitchConfig, WOPRPlugin, WOPRPluginContext } from "./types.js";
+import type { TwitchConfig } from "./types.js";
 
 let pluginCtx: WOPRPluginContext | null = null;
 let chatManager: TwitchChatManager | null = null;
