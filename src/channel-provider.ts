@@ -96,7 +96,8 @@ export async function handleRegisteredCommand(
     await cmd.handler(cmdCtx);
     return true;
   } catch (error) {
-    await cmdCtx.reply(`Error executing ${prefix}${cmdName}: ${error}`);
+    console.error(`[twitch] Error executing command ${prefix}${cmdName}:`, error);
+    await cmdCtx.reply(`Sorry, an error occurred while executing that command.`);
     return true;
   }
 }
