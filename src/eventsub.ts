@@ -17,42 +17,46 @@ export class TwitchEventSubManager {
     this.listener = new EventSubWsListener({ apiClient: this.apiClient });
 
     this.listener.onChannelRedemptionAdd(this.broadcasterId, async (event) => {
-      const channelRef: ChannelRef = {
-        type: "twitch",
-        id: `twitch:${this.broadcasterId}`,
-        name: event.broadcasterDisplayName,
-      };
+      try {
+        const channelRef: ChannelRef = {
+          type: "twitch",
+          id: `twitch:${this.broadcasterId}`,
+          name: event.broadcasterDisplayName,
+        };
 
-      const sessionKey = `twitch-${this.broadcasterId}`;
-      const message = `[Channel Point Redemption] ${event.userDisplayName} redeemed "${event.rewardTitle}" (${event.rewardCost} points)${event.input ? `: ${event.input}` : ""}`;
+        const sessionKey = `twitch-${this.broadcasterId}`;
+        const message = `[Channel Point Redemption] ${event.userDisplayName} redeemed "${event.rewardTitle}" (${event.rewardCost} points)${event.input ? `: ${event.input}` : ""}`;
 
-      this.ctx.logMessage(sessionKey, message, {
-        from: event.userDisplayName,
-        channel: channelRef,
-      });
+        this.ctx.logMessage(sessionKey, message, {
+          from: event.userDisplayName,
+          channel: channelRef,
+        });
 
-      if (event.input) {
-        await this.ctx.inject(
-          sessionKey,
-          `[Channel Point: ${event.rewardTitle}] [${event.userDisplayName}]: ${event.input}`,
-          {
-            from: event.userDisplayName,
-            channel: channelRef,
-          },
-        );
+        if (event.input) {
+          await this.ctx.inject(
+            sessionKey,
+            `[Channel Point: ${event.rewardTitle}] [${event.userDisplayName}]: ${event.input}`,
+            {
+              from: event.userDisplayName,
+              channel: channelRef,
+            },
+          );
 
-        if (this.apiClient) {
-          try {
-            await this.apiClient.channelPoints.updateRedemptionStatusByIds(
-              this.broadcasterId,
-              event.rewardId,
-              [event.id],
-              "FULFILLED",
-            );
-          } catch (err) {
-            this.ctx.log.error(`Failed to fulfill redemption: ${err}`);
+          if (this.apiClient) {
+            try {
+              await this.apiClient.channelPoints.updateRedemptionStatusByIds(
+                this.broadcasterId,
+                event.rewardId,
+                [event.id],
+                "FULFILLED",
+              );
+            } catch (err) {
+              this.ctx.log.error(`Failed to fulfill redemption: ${err}`);
+            }
           }
         }
+      } catch (err) {
+        this.ctx.log.error(`Unhandled error in channel redemption handler: ${err}`);
       }
     });
 

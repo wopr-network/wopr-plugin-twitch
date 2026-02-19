@@ -42,7 +42,7 @@ jobs:
 
   validate-package:
     runs-on: [self-hosted, Linux, X64]
-    needs: build
+    needs: [build, test]
     strategy:
       matrix:
         node-version: [20.x, 22.x]

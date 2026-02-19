@@ -9,6 +9,7 @@ import type { TwitchConfig } from "./types.js";
 let pluginCtx: WOPRPluginContext | null = null;
 let chatManager: TwitchChatManager | null = null;
 let eventSubManager: TwitchEventSubManager | null = null;
+let channelProviderRegistered = false;
 
 const configSchema: ConfigSchema = {
   title: "Twitch Integration",
@@ -124,7 +125,7 @@ const plugin: WOPRPlugin = {
 
     const config = ctx.getConfig<TwitchConfig>() ?? {};
 
-    if (!config.clientId || !config.accessToken) {
+    if (!config.clientId || !config.clientSecret || !config.accessToken) {
       ctx.log.warn("Twitch plugin not configured. Run 'wopr configure --plugin wopr-plugin-twitch'");
       return;
     }
@@ -170,12 +171,9 @@ const plugin: WOPRPlugin = {
       await ctx.saveConfig({
         ...config,
         accessToken: newToken.accessToken,
-        refreshToken: newToken.refreshToken,
+        ...(newToken.refreshToken !== null ? { refreshToken: newToken.refreshToken } : {}),
       });
     });
-
-    ctx.registerChannelProvider(twitchChannelProvider);
-    ctx.log.info("Registered Twitch channel provider");
 
     const apiClient = new ApiClient({ authProvider });
 
@@ -190,7 +188,6 @@ const plugin: WOPRPlugin = {
     }
 
     chatManager = new TwitchChatManager(ctx, { ...config, channels }, apiClient, botUserId);
-    setChatManager(chatManager);
 
     try {
       await chatManager.connect(authProvider);
@@ -202,6 +199,11 @@ const plugin: WOPRPlugin = {
       ctx.log.error(`Failed to connect to Twitch chat: ${err}`);
       return;
     }
+
+    setChatManager(chatManager);
+    ctx.registerChannelProvider(twitchChannelProvider);
+    channelProviderRegistered = true;
+    ctx.log.info("Registered Twitch channel provider");
 
     if (config.enableChannelPoints && config.broadcasterId) {
       eventSubManager = new TwitchEventSubManager(ctx, config.broadcasterId);
@@ -228,8 +230,9 @@ const plugin: WOPRPlugin = {
       chatManager = null;
     }
 
-    if (pluginCtx) {
+    if (pluginCtx && channelProviderRegistered) {
       pluginCtx.unregisterChannelProvider("twitch");
+      channelProviderRegistered = false;
     }
 
     pluginCtx = null;

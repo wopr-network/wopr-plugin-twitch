@@ -25,11 +25,11 @@ export const twitchChannelProvider: ChannelProvider = {
   id: "twitch",
 
   registerCommand(cmd: ChannelCommand): void {
-    registeredCommands.set(cmd.name, cmd);
+    registeredCommands.set(cmd.name.toLowerCase(), cmd);
   },
 
   unregisterCommand(name: string): void {
-    registeredCommands.delete(name);
+    registeredCommands.delete(name.toLowerCase());
   },
 
   getCommands(): ChannelCommand[] {
@@ -131,7 +131,8 @@ export async function handleRegisteredParsers(channel: string, sender: string, t
       try {
         await parser.handler(msgCtx);
         return true;
-      } catch {
+      } catch (err) {
+        console.error(`[twitch] Message parser "${parser.id}" threw an unhandled error:`, err);
         return false;
       }
     }
