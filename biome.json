@@ -8,7 +8,13 @@
     "rules": {
       "recommended": true,
       "correctness": { "noUnusedVariables": "error", "noUnusedImports": "error" },
-      "suspicious": { "noExplicitAny": "warn" },
+      "suspicious": {
+        "noConsole": {
+          "level": "error",
+          "options": {
+            "allow": ["warn", "error", "info"]
+          }
+        }, "noExplicitAny": "warn" },
       "style": { "noNonNullAssertion": "warn", "useConst": "error" }
     }
   },
