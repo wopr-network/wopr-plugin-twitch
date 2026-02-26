@@ -9,7 +9,7 @@ import type { TwitchConfig } from "./types.js";
 let pluginCtx: WOPRPluginContext | null = null;
 let chatManager: TwitchChatManager | null = null;
 let eventSubManager: TwitchEventSubManager | null = null;
-let channelProviderRegistered = false;
+const cleanups: Array<() => void | Promise<void>> = [];
 
 const configSchema: ConfigSchema = {
   title: "Twitch Integration",
@@ -22,6 +22,7 @@ const configSchema: ConfigSchema = {
       placeholder: "Twitch Application Client ID",
       required: true,
       description: "From the Twitch Developer Console",
+      setupFlow: "paste",
     },
     {
       name: "clientSecret",
@@ -30,6 +31,8 @@ const configSchema: ConfigSchema = {
       placeholder: "Twitch Application Client Secret",
       required: true,
       description: "From the Twitch Developer Console",
+      secret: true,
+      setupFlow: "paste",
     },
     {
       name: "accessToken",
@@ -38,6 +41,9 @@ const configSchema: ConfigSchema = {
       placeholder: "OAuth Access Token",
       required: true,
       description: "OAuth token with chat:read, chat:edit scopes",
+      secret: true,
+      setupFlow: "oauth",
+      oauthProvider: "twitch",
     },
     {
       name: "refreshToken",
@@ -45,6 +51,9 @@ const configSchema: ConfigSchema = {
       label: "Refresh Token",
       placeholder: "OAuth Refresh Token",
       description: "For automatic token refresh",
+      secret: true,
+      setupFlow: "oauth",
+      oauthProvider: "twitch",
     },
     {
       name: "channels",
@@ -103,9 +112,6 @@ const plugin: WOPRPlugin = {
     version: "1.0.0",
     description: "Twitch chat integration with whispers and channel point redemptions",
     capabilities: ["channel"],
-    provides: {
-      capabilities: [{ type: "channel", id: "twitch", displayName: "Twitch", tier: "byok" }],
-    },
     requires: {
       env: [],
       network: { outbound: true, hosts: ["irc-ws.chat.twitch.tv", "api.twitch.tv"] },
@@ -117,11 +123,13 @@ const plugin: WOPRPlugin = {
       shutdownBehavior: "drain",
       shutdownTimeoutMs: 10_000,
     },
+    configSchema,
   },
 
   async init(ctx: WOPRPluginContext) {
     pluginCtx = ctx;
     ctx.registerConfigSchema("wopr-plugin-twitch", configSchema);
+    cleanups.push(() => ctx.unregisterConfigSchema("wopr-plugin-twitch"));
 
     const config = ctx.getConfig<TwitchConfig>() ?? {};
 
@@ -183,8 +191,8 @@ const plugin: WOPRPlugin = {
       const tokenInfo = await getTokenInfo(config.accessToken, config.clientId);
       botUserId = tokenInfo.userId ?? undefined;
       botUsername = tokenInfo.userName ?? undefined;
-    } catch (err) {
-      ctx.log.warn(`Could not resolve bot user info: ${err}`);
+    } catch (error: unknown) {
+      ctx.log.warn(`Could not resolve bot user info: ${error}`);
     }
 
     chatManager = new TwitchChatManager(ctx, { ...config, channels }, apiClient, botUserId);
@@ -195,22 +203,22 @@ const plugin: WOPRPlugin = {
         chatManager.setBotUsername(botUsername);
         ctx.log.info(`Bot username set: ${botUsername}`);
       }
-    } catch (err) {
-      ctx.log.error(`Failed to connect to Twitch chat: ${err}`);
+    } catch (error: unknown) {
+      ctx.log.error(`Failed to connect to Twitch chat: ${error}`);
       return;
     }
 
     setChatManager(chatManager);
     ctx.registerChannelProvider(twitchChannelProvider);
-    channelProviderRegistered = true;
+    cleanups.push(() => ctx.unregisterChannelProvider("twitch"));
     ctx.log.info("Registered Twitch channel provider");
 
     if (config.enableChannelPoints && config.broadcasterId) {
       eventSubManager = new TwitchEventSubManager(ctx, config.broadcasterId);
       try {
         await eventSubManager.start(authProvider);
-      } catch (err) {
-        ctx.log.error(`Failed to start EventSub: ${err}`);
+      } catch (error: unknown) {
+        ctx.log.error(`Failed to start EventSub: ${error}`);
         // Non-fatal — chat still works without channel points
       }
     }
@@ -219,6 +227,8 @@ const plugin: WOPRPlugin = {
   },
 
   async shutdown() {
+    if (!pluginCtx) return;
+
     if (eventSubManager) {
       await eventSubManager.stop();
       eventSubManager = null;
@@ -230,10 +240,10 @@ const plugin: WOPRPlugin = {
       chatManager = null;
     }
 
-    if (pluginCtx && channelProviderRegistered) {
-      pluginCtx.unregisterChannelProvider("twitch");
-      channelProviderRegistered = false;
+    for (const cleanup of cleanups) {
+      await cleanup();
     }
+    cleanups.length = 0;
 
     pluginCtx = null;
   },

@@ -21,8 +21,8 @@ importers:
         specifier: ^8.0.0
         version: 8.0.3(@twurple/api@8.0.3(@twurple/auth@8.0.3))
       '@wopr-network/plugin-types':
-        specifier: ^0.2.1
-        version: 0.2.1(zod@3.25.76)
+        specifier: ^0.5.0
+        version: 0.5.0(zod@3.25.76)
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.3.15
@@ -483,10 +483,10 @@ packages:
   '@vitest/utils@4.0.18':
     resolution: {integrity: sha512-msMRKLMVLWygpK3u2Hybgi4MNjcYJvwTb0Ru09+fOyCXIgT5raYP041DRRdiJiI3k/2U6SEbAETB3YtBrUkCFA==}
 
-  '@wopr-network/plugin-types@0.2.1':
-    resolution: {integrity: sha512-k9NC3RdVQrVtNIoEuoiP7S8i2/+9s46+YWX0BjDRmRRkZqcWnkpJ+H0ryEQZ0YfnTUfRdB+ZcteR0McduS3p+g==}
+  '@wopr-network/plugin-types@0.5.0':
+    resolution: {integrity: sha512-auKJSvDewYlLL3gcabqomkCxz/UhYAsirb6dHh+jmuZ5mZcPy4sOkKjNHJfrk07FbXlbVOSHu46qshWyGI0uXQ==}
     peerDependencies:
-      zod: ^3.23.0
+      zod: ^4.3.6
 
   assertion-error@2.0.1:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
@@ -1073,7 +1073,7 @@ snapshots:
       '@vitest/pretty-format': 4.0.18
       tinyrainbow: 3.0.3
 
-  '@wopr-network/plugin-types@0.2.1(zod@3.25.76)':
+  '@wopr-network/plugin-types@0.5.0(zod@3.25.76)':
     dependencies:
       zod: 3.25.76
 

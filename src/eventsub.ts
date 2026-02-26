@@ -50,13 +50,13 @@ export class TwitchEventSubManager {
                 [event.id],
                 "FULFILLED",
               );
-            } catch (err) {
-              this.ctx.log.error(`Failed to fulfill redemption: ${err}`);
+            } catch (error: unknown) {
+              this.ctx.log.error(`Failed to fulfill redemption: ${error}`);
             }
           }
         }
-      } catch (err) {
-        this.ctx.log.error(`Unhandled error in channel redemption handler: ${err}`);
+      } catch (error: unknown) {
+        this.ctx.log.error(`Unhandled error in channel redemption handler: ${error}`);
       }
     });
 
