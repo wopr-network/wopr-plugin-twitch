@@ -148,8 +148,8 @@ export class TwitchChatManager {
 
     try {
       await this.sendWhisper(user, userInfo.userId, response);
-    } catch (err) {
-      this.ctx.log.error(`Failed to send whisper to ${user}: ${err}`);
+    } catch (error: unknown) {
+      this.ctx.log.error(`Failed to send whisper to ${user}: ${error}`);
     }
   }
 
