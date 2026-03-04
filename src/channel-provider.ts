@@ -6,6 +6,21 @@ import type {
   ChannelProvider,
 } from "@wopr-network/plugin-types";
 
+export interface ChannelNotificationPayload {
+  type: string;
+  from?: string;
+  pubkey?: string;
+  encryptPub?: string;
+  signature?: string;
+  channelName?: string;
+  [key: string]: unknown;
+}
+
+export interface ChannelNotificationCallbacks {
+  onAccept?: () => Promise<void>;
+  onDeny?: () => Promise<void>;
+}
+
 // Minimal interface for what channel-provider needs from TwitchChatManager
 interface ChatManagerLike {
   sendMessage(channel: string, text: string): Promise<void>;
@@ -21,7 +36,13 @@ export function setChatManager(mgr: ChatManagerLike | null): void {
 const registeredCommands: Map<string, ChannelCommand> = new Map();
 const registeredParsers: Map<string, ChannelMessageParser> = new Map();
 
-export const twitchChannelProvider: ChannelProvider = {
+export const twitchChannelProvider: ChannelProvider & {
+  sendNotification?: (
+    channelId: string,
+    payload: ChannelNotificationPayload,
+    callbacks?: ChannelNotificationCallbacks,
+  ) => Promise<void>;
+} = {
   id: "twitch",
 
   registerCommand(cmd: ChannelCommand): void {
@@ -57,6 +78,50 @@ export const twitchChannelProvider: ChannelProvider = {
 
   getBotUsername(): string {
     return chatManager?.getBotUsername() ?? "unknown";
+  },
+
+  async sendNotification(
+    channelId: string,
+    payload: ChannelNotificationPayload,
+    callbacks?: ChannelNotificationCallbacks,
+  ): Promise<void> {
+    if (payload.type !== "friend-request") return;
+    if (!chatManager) throw new Error("Twitch chat not connected");
+
+    const channel = channelId.replace(/^twitch:/, "");
+    const fromLabel = payload.from || payload.pubkey || "unknown peer";
+
+    await chatManager.sendMessage(
+      `#${channel}`,
+      `@${channel} Friend request from ${fromLabel}. Reply !accept or !deny`,
+    );
+
+    const parserId = `notif-fr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    const parser: ChannelMessageParser = {
+      id: parserId,
+      pattern: (msg: string) => {
+        const lower = msg.trim().toLowerCase();
+        return lower === "!accept" || lower === "!deny";
+      },
+      handler: async (ctx: ChannelMessageContext) => {
+        if (ctx.sender.toLowerCase() !== channel.toLowerCase()) return;
+
+        const action = ctx.content.trim().toLowerCase();
+
+        registeredParsers.delete(parserId);
+
+        if (action === "!accept") {
+          await callbacks?.onAccept?.();
+          await ctx.reply(`Friend request from ${fromLabel} accepted.`);
+        } else if (action === "!deny") {
+          await callbacks?.onDeny?.();
+          await ctx.reply(`Friend request from ${fromLabel} denied.`);
+        }
+      },
+    };
+
+    registeredParsers.set(parser.id, parser);
   },
 };
 

@@ -42,3 +42,5 @@ export interface TwitchUserInfo {
   badges: Map<string, string>;
   color?: string;
 }
+
+export type { ChannelNotificationCallbacks, ChannelNotificationPayload } from "./channel-provider.js";
