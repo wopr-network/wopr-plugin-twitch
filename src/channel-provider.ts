@@ -6,6 +6,21 @@ import type {
   ChannelProvider,
 } from "@wopr-network/plugin-types";
 
+export interface ChannelNotificationPayload {
+  type: string;
+  from?: string;
+  pubkey?: string;
+  encryptPub?: string;
+  signature?: string;
+  channelName?: string;
+  [key: string]: unknown;
+}
+
+export interface ChannelNotificationCallbacks {
+  onAccept?: () => Promise<void>;
+  onDeny?: () => Promise<void>;
+}
+
 // Minimal interface for what channel-provider needs from TwitchChatManager
 interface ChatManagerLike {
   sendMessage(channel: string, text: string): Promise<void>;
@@ -21,7 +36,15 @@ export function setChatManager(mgr: ChatManagerLike | null): void {
 const registeredCommands: Map<string, ChannelCommand> = new Map();
 const registeredParsers: Map<string, ChannelMessageParser> = new Map();
 
-export const twitchChannelProvider: ChannelProvider = {
+const NOTIFICATION_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+export const twitchChannelProvider: ChannelProvider & {
+  sendNotification?: (
+    channelId: string,
+    payload: ChannelNotificationPayload,
+    callbacks?: ChannelNotificationCallbacks,
+  ) => Promise<void>;
+} = {
   id: "twitch",
 
   registerCommand(cmd: ChannelCommand): void {
@@ -57,6 +80,71 @@ export const twitchChannelProvider: ChannelProvider = {
 
   getBotUsername(): string {
     return chatManager?.getBotUsername() ?? "unknown";
+  },
+
+  async sendNotification(
+    channelId: string,
+    payload: ChannelNotificationPayload,
+    callbacks?: ChannelNotificationCallbacks,
+  ): Promise<void> {
+    if (payload.type !== "friend-request") return;
+    if (!chatManager) throw new Error("Twitch chat not connected");
+
+    // Finding 4: Guard against numeric broadcaster IDs — they cannot be used as channel names
+    const channel = channelId.replace(/^twitch:/, "");
+    if (/^\d+$/.test(channel)) {
+      console.warn(
+        `[twitch] sendNotification received numeric broadcaster ID "${channel}" instead of channel name — cannot post chat message`,
+      );
+      return;
+    }
+
+    const fromLabel = payload.from || payload.pubkey || "unknown peer";
+
+    // Finding 2: Generate a unique short ID so concurrent notifications don't collide
+    const shortId = Math.random().toString(36).slice(2, 6).toUpperCase();
+
+    await chatManager.sendMessage(
+      `#${channel}`,
+      `@${channel} Friend request from ${fromLabel} [ID: ${shortId}]. Reply !accept ${shortId} or !deny ${shortId}`,
+    );
+
+    const parserId = `notif-fr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    // Finding 3: TTL — expire the parser after 5 minutes if owner never replies
+    const timeoutHandle = setTimeout(() => {
+      registeredParsers.delete(parserId);
+    }, NOTIFICATION_TTL_MS);
+
+    const parser: ChannelMessageParser = {
+      id: parserId,
+      // Finding 2: Pattern requires the unique short ID to avoid collision between concurrent requests
+      pattern: (msg: string) => {
+        const lower = msg.trim().toLowerCase();
+        return lower === `!accept ${shortId.toLowerCase()}` || lower === `!deny ${shortId.toLowerCase()}`;
+      },
+      handler: async (ctx: ChannelMessageContext) => {
+        // Finding 1: Verify the message is from the correct channel, not another channel the bot is in
+        if (ctx.channel?.replace(/^twitch:/, "").toLowerCase() !== channel.toLowerCase()) return;
+        if (ctx.sender.toLowerCase() !== channel.toLowerCase()) return;
+
+        const action = ctx.content.trim().toLowerCase();
+
+        // Finding 3: Clear TTL timeout before removing parser
+        clearTimeout(timeoutHandle);
+        registeredParsers.delete(parserId);
+
+        if (action === `!accept ${shortId.toLowerCase()}`) {
+          await callbacks?.onAccept?.();
+          await ctx.reply(`Friend request from ${fromLabel} accepted.`);
+        } else if (action === `!deny ${shortId.toLowerCase()}`) {
+          await callbacks?.onDeny?.();
+          await ctx.reply(`Friend request from ${fromLabel} denied.`);
+        }
+      },
+    };
+
+    registeredParsers.set(parser.id, parser);
   },
 };
 
